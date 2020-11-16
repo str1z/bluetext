@@ -1,0 +1,23 @@
+{
+  "name": "bluetext",
+  "version": "0.0.1",
+  "description": "Blueprints for text! Parses text to a tree according to your rules.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/str1z/bluetext.git"
+  },
+  "keywords": [
+    "parser",
+    "syntax"
+  ],
+  "author": "str1z",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/str1z/bluetext/issues"
+  },
+  "homepage": "https://github.com/str1z/bluetext#readme"
+}
