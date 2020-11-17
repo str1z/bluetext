@@ -82,4 +82,4 @@ BlueText.prototype.matchContainer = function (str, c = { i: 0 }) {
   return this.alter(res);
 };
 
-module.exports = BlueText;
+if (typeof module !== "undefined") module.exports = BlueText;
