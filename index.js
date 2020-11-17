@@ -1,85 +1,66 @@
-function prepareRegex(re = "") {
-  if (typeof re === "string") return new RegExp("^" + re);
-  else if (re instanceof Object) return new RegExp("^" + re.source);
+function parseRE(re) {
+  if (re instanceof RegExp) return new RegExp("^" + re.source, "s");
+  else if (typeof re === "string") return new RegExp("^" + re, "s");
 }
-
-function BlueText(name, options) {
-  this.escape = options.escape ? prepareRegex(options.escape) : false;
-  this.alter = options.alter || ((res) => res);
-  this.name = name;
-  this.rules = (options.rules || []).map((v) => (v === BlueText.SELF ? this : v));
-  if (options.pattern !== undefined) {
-    this.pattern = prepareRegex(options.pattern || "");
-    this.match = this.matchSimple;
-  } else {
-    this.start = prepareRegex(options.start || "");
-    this.end = prepareRegex(options.end || "$");
-    this.match = this.matchContainer;
-  }
+function Rule(options) {
+  const { start, end, nested = [], chained = [], map = (res) => res } = options;
+  this.start = parseRE(start);
+  this.end = parseRE(end);
+  this.nested = nested.map((v) => (v === Rule.SELF ? this : v));
+  this.chained = chained.map((v) => (v === Rule.SELF ? this : v));
+  this.map = map;
 }
-
-BlueText.SELF = Symbol("Rule.SELF");
-BlueText.NONE = Symbol("Rule.NONE");
-
-BlueText.prototype.matchSimple = function (str, c = { i: 0 }) {
-  let res = {
-    name: this.name,
-    from: c.i,
-  };
-  let sub = str.slice(c.i);
-  let match = sub.match(this.pattern);
-  if (!match) return BlueText.NONE;
-  res.captured = match.slice(1, match.length);
-  c.i += match[0].length;
-  res.to = c.i;
-  res.match = str.slice(res.from, res.to);
-  return this.alter(res);
+Rule.prototype.chain = function (...rules) {
+  this.chained.push(...rules.map((v) => (v === Rule.SELF ? this : v)));
+  return this;
 };
-
-BlueText.prototype.matchContainer = function (str, c = { i: 0 }) {
-  let res = {
-    name: this.name,
-    inner: [],
-    from: c.i,
-    to: str.length,
-    captured: [],
-  };
-  let sub = str.slice(c.i);
-  let match = sub.match(this.start);
-  if (!match) return BlueText.NONE;
-  res.captured = match.slice(1, match.length);
-  c.i += match[0].length;
-  res.ifrom = c.i;
-  while (str[c.i]) {
-    let reject = true;
-    for (let rule of this.rules) {
-      let ruleRes = rule.match(str, c);
-      if (ruleRes !== BlueText.NONE) {
-        reject = false;
-        res.inner.push(ruleRes);
+Rule.prototype.nest = function (...rules) {
+  this.nested.push(...rules.map((v) => (v === Rule.SELF ? this : v)));
+  return this;
+};
+Rule.prototype.repeat = function () {
+  this.chained.unshift(this);
+  return this;
+};
+Rule.prototype.recurse = function () {
+  this.nested.unshift(this);
+  return this;
+};
+Rule.NONE = Symbol("Rule.NONE");
+Rule.SELF = Symbol("Rule.SELF");
+Rule.prototype.parse = function (s, c = { i: 0 }) {
+  let start = s.slice(c.i).match(this.start);
+  if (!start) return Rule.NONE;
+  let i0 = c.i,
+    i1 = (c.i += start[0].length),
+    i2,
+    i3,
+    end,
+    nested = [],
+    chained;
+  if (this.end)
+    while (s[c.i]) {
+      if ((end = s.slice(c.i).match(this.end))) {
+        i2 = c.i;
+        i3 = c.i += end[0].length;
+        break;
+      }
+      for (let rule of this.nested) {
+        let res = rule.parse(s, c);
+        if (res !== Rule.NONE) {
+          nested.push(res);
+          break;
+        }
       }
     }
-    let sub = str.slice(c.i);
-    if (this.escape) {
-      let match = sub.match(this.escape);
-      if (match) {
-        c.i += match[0].length + 1;
-        continue;
-      }
+  for (let rule of this.chained) {
+    let res = rule.parse(s, c);
+    if (res !== Rule.NONE) {
+      chained = res;
+      break;
     }
-    let match = sub.match(this.end);
-    if (match) {
-      res.captured.push(...match.slice(1, match.length));
-      res.ito = c.i;
-      res.imatch = str.slice(res.ifrom, res.ito);
-      c.i += match[0].length;
-      res.to = c.i;
-      res.match = str.slice(res.from, res.to);
-      return this.alter(res);
-    }
-    if (reject) c.i++;
   }
-  return this.alter(res);
+  return this.map({ i: [i0, i1, i2, i3], start, end, nested, chained });
 };
 
-if (typeof module !== "undefined") module.exports = BlueText;
+if (typeof module !== "undefined") module.exports = Rule;
