@@ -1,6 +1,6 @@
 {
   "name": "bluetext",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Blueprints for text! Parses text to a tree according to your rules.",
   "main": "index.js",
   "scripts": {
